@@ -1,0 +1,55 @@
+{
+  "project": {
+    "name": "CreatingWhatsappAgentWithN8N",
+    "notes": "Fill placeholders before running full diagnostics. Non-secret values are prefilled from repository files."
+  },
+  "accounts": {
+    "hetzner": {
+      "provider": "Hetzner Cloud",
+      "projectName": "n8n-production",
+      "serverName": "n8n-prod-1",
+      "serverIp": "YOUR_SERVER_IP",
+      "sshUser": "n8n",
+      "sshPrivateKeyPath": "C:/Users/REPLACE_ME/.ssh/id_ed25519",
+      "composeFile": "~/.n8n/docker-compose.yml"
+    },
+    "n8n": {
+      "baseUrl": "https://n8n.YOUR_SERVER_IP.sslip.io",
+      "webhookPath": "meta-whatsapp-agent",
+      "basicAuthUser": "CHANGE_ME_N8N_USER",
+      "basicAuthPassword": "CHANGE_ME_N8N_PASSWORD",
+      "apiKey": "CHANGE_ME_N8N_API_KEY"
+    },
+    "meta": {
+      "graphApiVersion": "v25.0",
+      "graphBaseUrl": "https://graph.facebook.com",
+      "businessAccountId": "YOUR_BUSINESS_ACCOUNT_ID",
+      "phoneNumberId": "YOUR_PHONE_NUMBER_ID",
+      "ownerWhatsAppE164": "1234567890",
+      "verifyToken": "CHANGE_ME_VERIFY_TOKEN",
+      "systemUserToken": "CHANGE_ME_META_SYSTEM_USER_TOKEN"
+    },
+    "google": {
+      "projectId": "your-project-id",
+      "clientId": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+      "oauthRedirectUri": "https://n8n.YOUR_SERVER_IP.sslip.io/rest/oauth2-credential/callback",
+      "geminiApiKey": "CHANGE_ME_GEMINI_API_KEY"
+    },
+    "evolutionApi": {
+      "enabled": false,
+      "baseUrl": "https://whatsapp.YOUR_SERVER_IP.sslip.io",
+      "managerPath": "/manager",
+      "apiKey": "CHANGE_ME_EVOLUTION_API_KEY"
+    },
+    "browserless": {
+      "cdpUrl": "ws://YOUR_SERVER_IP:3000?token=YOUR_BROWSERLESS_TOKEN"
+    }
+  },
+  "checks": {
+    "enableRemoteSshChecks": true,
+    "requestTimeoutSeconds": 12,
+    "tailLogLines": 80,
+    "recentExecutionSampleSize": 25,
+    "outputFolder": "reports"
+  }
+}

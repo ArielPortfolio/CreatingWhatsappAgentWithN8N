@@ -1,0 +1,16 @@
+- Building parallel paths in the workflow - for Meta verification and "real flow"
+- SSH key generation and retrieval
+- Firewall - 80,443 and n8n ports were not accessible. 8080 and 22 were accessible.
+- n8n version update
+- using VPS volume or not (eventually - without volume)
+- cancelling the firewall - then trying to bring back
+- Adding SSL
+- reconfiguring Meta portal
+- Server IP allocation - if and when is it expeted to change (in the context of using sslip.io)
+- things to reconfigure after generating new user token and importing workflow
+- creating API key
+- running debug with inputs from Executions tab
+- inability to keep memory between 2 conseccutive whatsapp messages for a "first get events then delete" flow
+- having several instances of the workflow published at the same time
+- adding paid tier 1 due to "too many requests" blocks
+- Reading and updating google drive files required unexpected nodes and scripts in them

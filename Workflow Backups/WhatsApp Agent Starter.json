@@ -1,0 +1,281 @@
+{
+  "name": "WhatsApp Agent Starter",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "meta-whatsapp-agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        192,
+        512
+      ],
+      "id": "5715bad4-a844-4cc1-9d59-4ac490368bc8",
+      "name": "Meta Verify Webhook",
+      "webhookId": "a66871b3-1905-4b40-ae76-8f93b01e249f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "verify-mode",
+              "leftValue": "={{ $json.query.hub_mode }}",
+              "rightValue": "subscribe",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "verify-token",
+              "leftValue": "={{ $json.query.hub_verify_token }}",
+              "rightValue": "meta-whatsapp-agent",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        512
+      ],
+      "id": "ecee6acb-526a-4d53-9993-e1d093da6a12",
+      "name": "Verify Token Valid?"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Meta Verify Webhook').item.json.query['hub.challenge'] }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "content-type",
+                "value": "text/plain"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        688,
+        432
+      ],
+      "id": "70000d77-7542-40bf-acb5-3d6e0cbd9ba6",
+      "name": "Return Challenge"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Forbidden",
+        "options": {
+          "responseCode": 403,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "content-type",
+                "value": "text/plain"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        688,
+        592
+      ],
+      "id": "066ce15c-3c2a-4a36-ba1b-c9f837314607",
+      "name": "Reject Invalid Verify"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meta-whatsapp-agent",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        192,
+        880
+      ],
+      "id": "6b949c68-188c-4eb2-8bf6-80b50d71ff33",
+      "name": "WhatsApp Events Webhook",
+      "webhookId": "347cb37d-570a-43f5-a4c4-78782949031e"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-message",
+              "leftValue": "={{ $json.body && $json.body.entry && $json.body.entry[0] && $json.body.entry[0].changes && $json.body.entry[0].changes[0] && $json.body.entry[0].changes[0].value && $json.body.entry[0].changes[0].value.messages && $json.body.entry[0].changes[0].value.messages[0] ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        880
+      ],
+      "id": "ff1cc5e4-2f67-4e9c-8b14-b70e8bef9923",
+      "name": "Has Incoming Message?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v25.0/YOUR_PHONE_NUMBER_ID/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.body.entry[0].changes[0].value.messages[0].from, type: 'text', text: { body: 'You said: ' + (($json.body.entry[0].changes[0].value.messages[0].text && $json.body.entry[0].changes[0].value.messages[0].text.body) ? $json.body.entry[0].changes[0].value.messages[0].text.body : '[non-text message received]') } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        752,
+        800
+      ],
+      "id": "20a46ed1-16f6-4c5a-9c39-9d9f2eef8ad0",
+      "name": "Send WhatsApp Reply",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "d1bEg1XTF1KV5NYQ",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        768,
+        960
+      ],
+      "id": "3a91db2f-ae27-45ef-8783-c51ad024c2fa",
+      "name": "Ignore Non-Message Event"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Meta Verify Webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify Token Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Token Valid?": {
+      "main": [
+        [
+          {
+            "node": "Return Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Invalid Verify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Events Webhook": {
+      "main": [
+        [
+          {
+            "node": "Has Incoming Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Incoming Message?": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore Non-Message Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "43b0e90a-e966-4cdb-9807-2a180373f632",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f4ce6650087cab12fc164699d5e505cac6489b1078de21745968e7f572cce88e"
+  },
+  "id": "57rWJzrZz9e74bXY",
+  "tags": []
+}

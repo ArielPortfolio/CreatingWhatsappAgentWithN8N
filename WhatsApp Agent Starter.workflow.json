@@ -1,0 +1,517 @@
+{
+  "name": "WhatsApp Agent Starter",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "meta-whatsapp-agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -820,
+        -240
+      ],
+      "id": "9fd8d30b-cdcf-4380-b779-62d1964c2e41",
+      "name": "Meta Verify Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "verify-mode",
+              "leftValue": "={{ $json.query.hub_mode }}",
+              "rightValue": "subscribe",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "verify-token",
+              "leftValue": "={{ $json.query.hub_verify_token }}",
+              "rightValue": "CHANGE_ME_VERIFY_TOKEN",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -580,
+        -240
+      ],
+      "id": "72c0064a-b4b0-4639-aec9-f376ab5e9617",
+      "name": "Verify Token Valid?"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Meta Verify Webhook').item.json.query['hub.challenge'] }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "content-type",
+                "value": "text/plain"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -320,
+        -320
+      ],
+      "id": "3504556a-59f2-4adf-b2b2-97dd335ca6eb",
+      "name": "Return Challenge"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Forbidden",
+        "options": {
+          "responseCode": 403,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "content-type",
+                "value": "text/plain"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -320,
+        -160
+      ],
+      "id": "01f0f0f6-fd1f-42a8-9ec1-e347b270db1a",
+      "name": "Reject Invalid Verify"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meta-whatsapp-agent",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -820,
+        120
+      ],
+      "id": "c8f1f523-90e7-43df-8f6f-9da85eb899dd",
+      "name": "WhatsApp Events Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-message",
+              "leftValue": "={{ $json.body && $json.body.entry && $json.body.entry[0] && $json.body.entry[0].changes && $json.body.entry[0].changes[0] && $json.body.entry[0].changes[0].value && $json.body.entry[0].changes[0].value.messages && $json.body.entry[0].changes[0].value.messages[0] ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -560,
+        120
+      ],
+      "id": "45bdd031-b604-46cf-a68f-44ffd1641304",
+      "name": "Has Incoming Message?"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "number": [
+            {
+              "name": "cfg_memory_window_turns",
+              "value": 20
+            },
+            {
+              "name": "cfg_monthly_cost_limit_usd",
+              "value": 25
+            },
+            {
+              "name": "cfg_estimated_cost_per_1k_chars_usd",
+              "value": 0.0005
+            }
+          ],
+          "string": [
+            {
+              "name": "cfg_owner_whatsapp_e164",
+              "value": "+1234567890"
+            }
+          ],
+          "boolean": [
+            {
+              "name": "cfg_cost_alert_enabled",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -340,
+        40
+      ],
+      "id": "6720739d-2db8-43dc-9f90-4b87b7bc5288",
+      "name": "Runtime Config"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "sender_phone",
+              "value": "={{ $json.body.entry[0].changes[0].value.messages[0].from }}"
+            },
+            {
+              "name": "incoming_text",
+              "value": "={{ ($json.body.entry[0].changes[0].value.messages[0].text && $json.body.entry[0].changes[0].value.messages[0].text.body) ? $json.body.entry[0].changes[0].value.messages[0].text.body : '[non-text message received]' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        40
+      ],
+      "id": "4b66ef9c-0ea6-4d2d-b706-5f9d6a7de5b3",
+      "name": "Extract Message Data"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.memoryBySender) {\n  staticData.memoryBySender = {};\n}\n\nconst inputItems = $input.all();\nconst out = [];\nfor (const item of inputItems) {\n  const json = item.json;\n  const sender = json.sender_phone;\n  const memoryWindow = Number(json.cfg_memory_window_turns || 20);\n  const incomingText = json.incoming_text || '[empty]';\n\n  const history = staticData.memoryBySender[sender] || [];\n  history.push({ role: 'user', text: incomingText, ts: new Date().toISOString() });\n\n  const boundedHistory = history.slice(-memoryWindow);\n\n  // Keep the current behavior stable while we integrate model calls iteratively.\n  const assistantText = `You said: ${incomingText}`;\n\n  boundedHistory.push({ role: 'assistant', text: assistantText, ts: new Date().toISOString() });\n  staticData.memoryBySender[sender] = boundedHistory.slice(-memoryWindow);\n\n  const rate = Number(json.cfg_estimated_cost_per_1k_chars_usd || 0);\n  const totalChars = incomingText.length + assistantText.length;\n  const estimatedCostUsd = Number(((totalChars / 1000) * rate).toFixed(6));\n\n  out.push({\n    json: {\n      ...json,\n      assistant_text: assistantText,\n      estimated_cost_usd: estimatedCostUsd\n    }\n  });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        40
+      ],
+      "id": "9196f438-c18c-427a-b8d6-cd8d4884cbca",
+      "name": "Build Reply And Memory"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.monthlyCost) {\n  staticData.monthlyCost = {};\n}\n\nconst now = new Date();\nconst monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;\nconst inputItems = $input.all();\nconst out = [];\n\nfor (const item of inputItems) {\n  const json = item.json;\n  const record = staticData.monthlyCost[monthKey] || { total_usd: 0, alert_sent: false, updated_at: null };\n  const delta = Number(json.estimated_cost_usd || 0);\n\n  record.total_usd = Number((record.total_usd + delta).toFixed(6));\n  record.updated_at = now.toISOString();\n  staticData.monthlyCost[monthKey] = record;\n\n  const threshold = Number(json.cfg_monthly_cost_limit_usd || 25);\n  const alertNeeded = Boolean(json.cfg_cost_alert_enabled) && !record.alert_sent && record.total_usd >= threshold;\n\n  out.push({\n    json: {\n      ...json,\n      cost_month_key: monthKey,\n      cost_total_usd: record.total_usd,\n      cost_alert_needed: alertNeeded\n    }\n  });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        40
+      ],
+      "id": "b8f09e6a-3f7d-4dc7-b774-6528f5f1334d",
+      "name": "Track Monthly Cost"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cost-alert-needed",
+              "leftValue": "={{ $json.cost_alert_needed ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        600,
+        140
+      ],
+      "id": "4fd8e68c-f2f1-43f0-a4b7-a8327d215ca6",
+      "name": "Cost Alert Needed?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v25.0/YOUR_PHONE_NUMBER_ID/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.cfg_owner_whatsapp_e164, type: 'text', text: { body: 'Cost alert: monthly estimated usage is $' + $json.cost_total_usd + ' for ' + $json.cost_month_key + '. Limit: $' + $json.cfg_monthly_cost_limit_usd + '.' } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        820,
+        80
+      ],
+      "id": "cdbf5f3e-c908-468b-a32c-eb52cb44007d",
+      "name": "Send Cost Alert"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.monthlyCost) {\n  staticData.monthlyCost = {};\n}\n\nconst inputItems = $input.all();\nfor (const item of inputItems) {\n  const key = item.json.cost_month_key;\n  if (key && staticData.monthlyCost[key]) {\n    staticData.monthlyCost[key].alert_sent = true;\n    staticData.monthlyCost[key].updated_at = new Date().toISOString();\n  }\n}\n\nreturn inputItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        80
+      ],
+      "id": "1c7788d8-9628-408f-a7fd-4f2b4f87d2a3",
+      "name": "Mark Cost Alert Sent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v25.0/YOUR_PHONE_NUMBER_ID/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.sender_phone, type: 'text', text: { body: $json.assistant_text } }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        600,
+        -40
+      ],
+      "id": "c0c6e83e-2089-421e-9dd8-862ab93f9216",
+      "name": "Send WhatsApp Reply"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        200
+      ],
+      "id": "71d75d89-5686-4200-b720-f8cb72bc7838",
+      "name": "Ignore Non-Message Event"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Meta Verify Webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify Token Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Token Valid?": {
+      "main": [
+        [
+          {
+            "node": "Return Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Invalid Verify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Events Webhook": {
+      "main": [
+        [
+          {
+            "node": "Has Incoming Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Incoming Message?": {
+      "main": [
+        [
+          {
+            "node": "Runtime Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore Non-Message Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Runtime Config": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message Data": {
+      "main": [
+        [
+          {
+            "node": "Build Reply And Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reply And Memory": {
+      "main": [
+        [
+          {
+            "node": "Track Monthly Cost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track Monthly Cost": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Cost Alert Needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cost Alert Needed?": {
+      "main": [
+        [
+          {
+            "node": "Send Cost Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Send Cost Alert": {
+      "main": [
+        [
+          {
+            "node": "Mark Cost Alert Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c4d09a74-70ce-4314-b7d0-cdc3ac46c0e8",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

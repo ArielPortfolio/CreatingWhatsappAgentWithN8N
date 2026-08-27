@@ -1,0 +1,1669 @@
+{
+    "name":  "WIP",
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "path":  "meta-whatsapp-agent",
+                                         "responseMode":  "responseNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       96048,
+                                       41120
+                                   ],
+                      "id":  "3a710fec-80ad-46e3-b6e0-b00edf30d653",
+                      "name":  "Meta Verify Webhook1",
+                      "webhookId":  "meta-whatsapp-agent"
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict",
+                                                                            "version":  3
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "verify-mode",
+                                                                                   "leftValue":  "={{ $json.query.hub_mode }}",
+                                                                                   "rightValue":  "subscribe",
+                                                                                   "operator":  {
+                                                                                                    "type":  "string",
+                                                                                                    "operation":  "equals"
+                                                                                                }
+                                                                               },
+                                                                               {
+                                                                                   "id":  "verify-token",
+                                                                                   "leftValue":  "={{ $json.query.hub_verify_token }}",
+                                                                                   "rightValue":  "meta-whatsapp-agent",
+                                                                                   "operator":  {
+                                                                                                    "type":  "string",
+                                                                                                    "operation":  "equals"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.3,
+                      "position":  [
+                                       96288,
+                                       41120
+                                   ],
+                      "id":  "0bc5d1bf-5e98-4932-a015-059d14fc9dea",
+                      "name":  "Verify Token Valid?1"
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "text",
+                                         "responseBody":  "={{ $(\u0027Meta Verify Webhook1\u0027).item.json.query[\u0027hub.challenge\u0027] }}",
+                                         "options":  {
+                                                         "responseCode":  200,
+                                                         "responseHeaders":  {
+                                                                                 "entries":  [
+                                                                                                 {
+                                                                                                     "name":  "content-type",
+                                                                                                     "value":  "text/plain"
+                                                                                                 }
+                                                                                             ]
+                                                                             }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       96544,
+                                       41040
+                                   ],
+                      "id":  "619acd92-b277-46d4-bdae-4eb3ce72a16d",
+                      "name":  "Return Challenge1"
+                  },
+                  {
+                      "parameters":  {
+                                         "promptType":  "=define",
+                                         "text":  "={{ \"Current local datetime (Asia/Jerusalem): \" + $now.setZone(\u0027Asia/Jerusalem\u0027).toISO() + \". Resolve any date without year using this datetime. YouTube policy: recency_source=\" + String($json.cfg_youtube_recency_source) + \", order=\" + String($json.cfg_youtube_result_order) + \", cap=\" + String($json.cfg_youtube_cap) + \", pagination=\" + String($json.cfg_youtube_allow_pagination) + \", max_pages=\" + String($json.cfg_youtube_max_pages) + \". User request: \" + $json.incoming_text }}",
+                                         "options":  {
+                                                         "systemMessage":  "You are my WhatsApp assistant.\nWhen the user asks to schedule/book/create an appointment, use Google Calendar Tool.\nIf duration is not provided by the user assume 1 hour.\nIf required details are missing (title, date/time, duration), ask a follow-up question.\nAfter creating an event, confirm the final date and time clearly.\nIf user omits year, use current local year from provided datetime.\nNever use a past year unless user explicitly asks for a past year.\nConvert Start and End to RFC3339 with timezone offset.\nIf day and month are provided and that date already passed this year, ask a clarification question (or choose next year, based on your preference).\nFor delete requests:\n- first call Search calendar events.\n- If multiple matches, ask user which one.\n- If one match, delete it and return the details of the deleted event.\n- If more than one match, provide the details of all the matching events.\nFor update/edit requests:\n- first call Search calendar events to identify the target event.\n- if exactly one event matches, call Update event and apply only requested changes.\n- if multiple events match, ask the user to choose one.\nFor reminder requests (create or update):\n- if user specifies reminder timing like X hours before, set custom reminder with that X value.\n- convert hours to minutes for the calendar reminder.\n- use popup reminders unless user asks for email.\nFor recurrence requests (create or update):\n- set recurrence using RRULE syntax (without the RRULE: prefix in tool input).\n- examples: FREQ=DAILY;COUNT=5 or FREQ=WEEKLY;UNTIL=20261231T235959Z.\nFor Google Drive requests:\n- ALWAYS use the Google Drive search tool for search requests and the Drive create-text-file tool for file creation requests.\n- treat phrases like contains, containing, substring, includes, starts with, ends with, or partial name as valid search intents.\n- for any of those intents, pass only the meaningful text fragment as Drive_Query (example: request contains GRNY =\u003e Drive_Query = GRNY).\n- do not claim that substring search is unsupported.\n- do not ask the user to provide an exact file name when they already provided a fragment.\n- if results are found, return concise matches with name and link.\n- if no results are found, say no matches were found and offer to try another fragment.\n- if multiple plausible matches exist, ask the user which file/folder they mean.\n- for file creation, ALWAYS call Drive create-text-file with both File_Name and File_Content.\n- NEVER call Drive update tool to create a new file.\n- use Drive update only for existing files, and for rename-only requests keep Change_File_Content=false.\n- for file content requests, first search the file and then use Read file text in Google Drive2 with file ID.\n- if search returns no results, clearly say no file was found and stop.\n- if search returns multiple plausible files, ask the user to choose one and stop.\n- once a file is selected, call the read text tool exactly once for that request.\n- for file-content requests, use at most two Drive tool calls total: one search and one read; after those, respond immediately.\n- never call the same Drive tool more than once with the same arguments in a single request.\n- if file content was just created or updated in this same conversation and is known in memory, you may return that remembered text.\n- if read/download output is empty or unreadable, do not retry in a loop and do not fabricate content; explain extraction failed and offer metadata-only response.\nFor YouTube requests:\n- always refresh YouTube answers with tool calls in the current request; do not reuse video IDs or titles from earlier conversation memory.\n- read and enforce policy values from user context: cfg_youtube_recency_source, cfg_youtube_result_order, cfg_youtube_cap, cfg_youtube_allow_pagination, cfg_youtube_max_pages, unless the user asks explicitly for different values in his prompt for a given run.\n- for every YouTube response, append exactly one final debug line in this format: [YT_POLICY recency_source=\u003cvalue\u003e; order=\u003cvalue\u003e; cap=\u003cvalue\u003e; pagination=\u003cvalue\u003e; max_pages=\u003cvalue\u003e].\n- for each YouTube request, use at most 3 total YouTube tool calls by default; if the user explicitly asks for deep pagination or very large counts, you may use up to 120 YouTube tool calls in that request (bounded by requested scope and stop conditions).\n- never call the same YouTube tool more than once with identical arguments in one request.\n- first call Get my YouTube related playlists.\n- if relatedPlaylists.watchHistory exists, call List videos from YouTube history playlist with that playlist id.\n- if watchHistory is missing, do not retry the same failing path repeatedly.\n- when watchHistory is missing, call List my YouTube activities, prefer relatedPlaylists.likes as fallback, and use relatedPlaylists.uploads only if likes is missing or unavailable.\n- for recency ordering, use playlist retrieval order from List videos from YouTube history playlist (position 0 / first returned item is newest for the selected fallback playlist).\n- do not sort by video publish date fields like snippet.publishedAt or contentDetails.videoPublishedAt.\n- preserve API return order exactly; do not reorder, rerank, or resort items by any date field.\n- never describe publication date as a proxy for watch or like recency.\n- for recent liked/history lists, default each item to Title + Link only; include publication dates only if the user explicitly asks for publication dates.\n- for recent/list/latest requests, never paginate unless the user explicitly asks for more pages or a larger result count than one page.\n- return at most cfg_youtube_cap items in the same retrieval order (newest first).\n- if more items are needed and (cfg_youtube_allow_pagination is true or the user explicitly asks for more pages/more results), continue pagination with Page_Token while preserving retrieval order until requested count is reached, no nextPageToken, repeated token, or pages read equals effective max pages (use user-requested pages when explicitly provided, otherwise cfg_youtube_max_pages).\n- if nextPageToken is missing or repeats the previous token, stop pagination immediately and return collected items.\n- if a new page returns the same first videoId as the previous page, stop pagination and report that the API repeated page data.\n- for questions about the last watched video, clearly state exact watch history is unavailable, then return the first valid item from the fallback ordered list with title and link.\n- for criteria search (example: stocks), scan items in retrieval order and return the first matching item by title/channel/description (this is the most recent match).\n- for executive summary, use Get YouTube video details and provide a metadata-based executive summary with key ideas, claims, risks, and action items.\n- call Get YouTube transcript (playwright)1 only when the user explicitly asks for transcript text.\r\n- call it once with Video_ID and optional Transcript_Language.\r\n- expect JSON output with fields like status, transcript_text, source, error.message, error.stack, and debug.\r\n- if status is ok and transcript_text is non-empty, use transcript_text as the transcript source of truth.\r\n- if status is not ok or transcript_text is empty, explicitly say transcript was unavailable.\r\n- when transcript is unavailable and the user requested a transcript-based summary, explicitly say the requested transcript-based summary cannot be fully provided because transcript could not be obtained, include a short debug reason from error.message (or debug.stage), then provide the best possible fallback summary from available metadata, clearly labeled as Fallback (metadata-only).\r\n- do not include full stack traces in normal replies; keep stack traces for debugging only unless the user explicitly asks for technical details.\r\n- if needed for fallback quality, call Get YouTube video details once (if not already fetched) before writing the fallback summary.\n- never fabricate transcript text or watch history access."
+                                                     }
+                                     },
+                      "type":  "@n8n/n8n-nodes-langchain.agent",
+                      "typeVersion":  3.1,
+                      "position":  [
+                                       98256,
+                                       41888
+                                   ],
+                      "id":  "13e9b7f5-5454-4ea8-83a9-f3a53b611a5e",
+                      "name":  "AI Agent2"
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "text",
+                                         "responseBody":  "Forbidden",
+                                         "options":  {
+                                                         "responseCode":  403,
+                                                         "responseHeaders":  {
+                                                                                 "entries":  [
+                                                                                                 {
+                                                                                                     "name":  "content-type",
+                                                                                                     "value":  "text/plain"
+                                                                                                 }
+                                                                                             ]
+                                                                             }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       96544,
+                                       41200
+                                   ],
+                      "id":  "5dfae5d0-549a-4fd9-9292-0a5118f5965d",
+                      "name":  "Reject Invalid Verify"
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ (() =\u003e { const requested = Number($fromAI(\u0027Activity_Max_Results\u0027, `How many recent activities to inspect`, \u0027number\u0027)); const fallback = Number($json.cfg_youtube_cap) || 20; const resolved = Number.isFinite(requested) \u0026\u0026 requested \u003e 0 ? requested : fallback; const maxResults = Math.max(1, Math.min(50, resolved)); return \u0027https://www.googleapis.com/youtube/v3/activities?part=snippet,contentDetails\u0026mine=true\u0026maxResults=\u0027 + maxResults; })() }}",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "youTubeOAuth2Api",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequestTool",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       98592,
+                                       43104
+                                   ],
+                      "id":  "5ad68657-9bfe-42f4-9b15-fdf99591efb5",
+                      "name":  "List my YouTube activities",
+                      "credentials":  {
+                                          "youTubeOAuth2Api":  {
+                                                                   "id":  "N8pvfVIGIi18Ratk",
+                                                                   "name":  "ariel.s21.phone_youtube"
+                                                               }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "meta-whatsapp-agent",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       96032,
+                                       41824
+                                   ],
+                      "id":  "fe991e60-1f55-48be-a7ef-51f3c0f7b537",
+                      "name":  "WhatsApp Events Webhook",
+                      "webhookId":  "meta-whatsapp-agent"
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict",
+                                                                            "version":  3
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "has-message",
+                                                                                   "leftValue":  "={{ $json.body \u0026\u0026 $json.body.entry \u0026\u0026 $json.body.entry[0] \u0026\u0026 $json.body.entry[0].changes \u0026\u0026 $json.body.entry[0].changes[0] \u0026\u0026 $json.body.entry[0].changes[0].value \u0026\u0026 $json.body.entry[0].changes[0].value.messages \u0026\u0026 $json.body.entry[0].changes[0].value.messages[0] ? \u0027yes\u0027 : \u0027no\u0027 }}",
+                                                                                   "rightValue":  "yes",
+                                                                                   "operator":  {
+                                                                                                    "type":  "string",
+                                                                                                    "operation":  "equals"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.3,
+                      "position":  [
+                                       96288,
+                                       41824
+                                   ],
+                      "id":  "5a8550f1-8536-4c07-9400-fd332c27c563",
+                      "name":  "Has Incoming Message?"
+                  },
+                  {
+                      "parameters":  {
+                                         "values":  {
+                                                        "number":  [
+                                                                       {
+                                                                           "name":  "cfg_memory_window_turns",
+                                                                           "value":  20
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_monthly_cost_limit_usd",
+                                                                           "value":  25
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_estimated_cost_per_1k_chars_usd",
+                                                                           "value":  0.0005
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_youtube_cap",
+                                                                           "value":  20
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_youtube_max_pages",
+                                                                           "value":  2
+                                                                       }
+                                                                   ],
+                                                        "string":  [
+                                                                       {
+                                                                           "name":  "cfg_owner_whatsapp_e164",
+                                                                           "value":  "+1234567890"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_youtube_result_order",
+                                                                           "value":  "newest_first"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_youtube_recency_source",
+                                                                           "value":  "playlist_order"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_transcript_provider",
+                                                                           "value":  "playwright_worker"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_transcript_api_base_url",
+                                                                           "value":  "https://www.youtube.com/api/timedtext"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_transcript_default_lang",
+                                                                           "value":  "en"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_youtube_mode",
+                                                                           "value":  "complete"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_transcript_worker_url",
+                                                                           "value":  "https://n8n.YOUR_SERVER_IP.sslip.io/webhook/youtube-transcript-playwright"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_playwright_script_path",
+                                                                           "value":  "/home/node/.n8n/scripts/youtube_transcript_playwright.js"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_playwright_node_command",
+                                                                           "value":  "node"
+                                                                       },
+                                                                       {
+                                                                           "name":  "cfg_playwright_cdp_url",
+                                                                           "value":  "ws://YOUR_SERVER_IP:3000?token=YOUR_BROWSERLESS_TOKEN"
+                                                                       }
+                                                                   ],
+                                                        "boolean":  [
+                                                                        {
+                                                                            "name":  "cfg_cost_alert_enabled",
+                                                                            "value":  true
+                                                                        },
+                                                                        {
+                                                                            "name":  "cfg_youtube_allow_pagination",
+                                                                            "value":  false
+                                                                        }
+                                                                    ]
+                                                    },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.set",
+                      "typeVersion":  2,
+                      "position":  [
+                                       96512,
+                                       41744
+                                   ],
+                      "id":  "24f203bb-830f-4093-af9b-3dcd0d306268",
+                      "name":  "Runtime Config"
+                  },
+                  {
+                      "parameters":  {
+                                         "values":  {
+                                                        "string":  [
+                                                                       {
+                                                                           "name":  "sender_phone",
+                                                                           "value":  "={{ $json.body.entry[0].changes[0].value.messages[0].from }}"
+                                                                       },
+                                                                       {
+                                                                           "name":  "incoming_text",
+                                                                           "value":  "={{ $json.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body || \u0027\u0027 }}"
+                                                                       }
+                                                                   ]
+                                                    },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.set",
+                      "typeVersion":  2,
+                      "position":  [
+                                       97088,
+                                       41552
+                                   ],
+                      "id":  "ecde03d1-e464-4eea-b90d-b8eacec1fa54",
+                      "name":  "Extract Message Data"
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict",
+                                                                            "version":  3
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "is-audio",
+                                                                                   "leftValue":  "={{ $json.body.entry[0].changes[0].value.messages[0].type || \u0027\u0027 }}",
+                                                                                   "rightValue":  "audio",
+                                                                                   "operator":  {
+                                                                                                    "type":  "string",
+                                                                                                    "operation":  "equals"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.3,
+                      "position":  [
+                                       96816,
+                                       41744
+                                   ],
+                      "id":  "1bd209b8-1741-4a2f-a14a-849e74e097d1",
+                      "name":  "Is Audio Message?"
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ \u0027https://graph.facebook.com/v25.0/\u0027 + $json.body.entry[0].changes[0].value.messages[0].audio.id }}",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "httpBearerAuth",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "json"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       97056,
+                                       41888
+                                   ],
+                      "id":  "6226cce3-8a99-4233-a617-a7bb583cd6ed",
+                      "name":  "WA Get Audio Media Info",
+                      "credentials":  {
+                                          "httpBearerAuth":  {
+                                                                 "id":  "x8M66I3X8TT5eWZg",
+                                                                 "name":  "Bearer Auth account"
+                                                             }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ $json.url }}",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "httpBearerAuth",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "file"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       97248,
+                                       41888
+                                   ],
+                      "id":  "19f0162f-4047-4aff-9a46-e81bff541f12",
+                      "name":  "WA Download Audio Binary",
+                      "credentials":  {
+                                          "httpBearerAuth":  {
+                                                                 "id":  "x8M66I3X8TT5eWZg",
+                                                                 "name":  "Bearer Auth account"
+                                                             }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const inputItems = $input.all();\nconst out = [];\n\nfor (let i = 0; i \u003c inputItems.length; i++) {\n  const item = inputItems[i];\n  const binaryMeta = item.binary?.data;\n\n  if (!binaryMeta) {\n    throw new Error(\u0027Missing downloaded audio binary in field: data\u0027);\n  }\n\n  const buffer = await this.helpers.getBinaryDataBuffer(i, \u0027data\u0027);\n\n  out.push({\n    json: {\n      ...item.json,\n      audio_base64: buffer.toString(\u0027base64\u0027),\n      audio_mime_type: binaryMeta.mimeType || \u0027audio/ogg\u0027\n    }\n  });\n}\n\nreturn out;"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       97424,
+                                       41888
+                                   ],
+                      "id":  "9e308d33-c842-4078-b682-36856425f264",
+                      "name":  "Prepare Gemini Audio Payload"
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googlePalmApi",
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({\n  contents: [\n    {\n      parts: [\n        {\n          text: \u0027Transcribe this WhatsApp voice message exactly. Return only the transcript text, with no extra explanation.\u0027\n        },\n        {\n          inline_data: {\n            mime_type: $json.audio_mime_type || \u0027audio/ogg\u0027,\n            data: $json.audio_base64\n          }\n        }\n      ]\n    }\n  ],\n  generationConfig: {\n    temperature: 0\n  }\n}) }}",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "json"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       97600,
+                                       41888
+                                   ],
+                      "id":  "cb1a6b18-1e45-416f-9ef4-c795a518bc5d",
+                      "name":  "Gemini Transcribe Audio",
+                      "credentials":  {
+                                          "googlePalmApi":  {
+                                                                "id":  "hL0M65HOFODi2w8U",
+                                                                "name":  "Google Gemini(PaLM) Api account"
+                                                            }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "values":  {
+                                                        "string":  [
+                                                                       {
+                                                                           "name":  "sender_phone",
+                                                                           "value":  "={{ $(\u0027WhatsApp Events Webhook\u0027).item.json.body.entry[0].changes[0].value.messages[0].from }}"
+                                                                       },
+                                                                       {
+                                                                           "name":  "incoming_text",
+                                                                           "value":  "={{ (($json.candidates?.[0]?.content?.parts || []).map(p =\u003e p.text).filter(t =\u003e t).join(\u0027 \u0027).trim()) || \u0027\u0027 }}"
+                                                                       }
+                                                                   ],
+                                                        "boolean":  [
+                                                                        {
+                                                                            "name":  "audio_transcribed",
+                                                                            "value":  true
+                                                                        }
+                                                                    ]
+                                                    },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.set",
+                      "typeVersion":  2,
+                      "position":  [
+                                       97792,
+                                       41888
+                                   ],
+                      "id":  "5cff0a56-9488-4960-948f-78607e55ed31",
+                      "name":  "Build Audio Message Data"
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const staticData = $getWorkflowStaticData(\u0027global\u0027);\nif (!staticData.memoryBySender) {\n  staticData.memoryBySender = {};\n}\n\nconst inputItems = $input.all();\nconst out = [];\nfor (const item of inputItems) {\n  const json = item.json;\n  const sender = json.sender_phone;\n  const memoryWindow = Number(json.cfg_memory_window_turns || 20);\n  const incomingText = json.incoming_text || \u0027[empty]\u0027;\n\n  const history = staticData.memoryBySender[sender] || [];\n  history.push({ role: \u0027user\u0027, text: incomingText, ts: new Date().toISOString() });\n\n  const boundedHistory = history.slice(-memoryWindow);\n\n  // Keep the current behavior stable while we integrate model calls iteratively.\n  const assistantText = `You said: ${incomingText}`;\n\n  boundedHistory.push({ role: \u0027assistant\u0027, text: assistantText, ts: new Date().toISOString() });\n  staticData.memoryBySender[sender] = boundedHistory.slice(-memoryWindow);\n\n  const rate = Number(json.cfg_estimated_cost_per_1k_chars_usd || 0);\n  const totalChars = incomingText.length + assistantText.length;\n  const estimatedCostUsd = Number(((totalChars / 1000) * rate).toFixed(6));\n\n  out.push({\n    json: {\n      ...json,\n      assistant_text: assistantText,\n      estimated_cost_usd: estimatedCostUsd\n    }\n  });\n}\n\nreturn out;"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       97984,
+                                       41552
+                                   ],
+                      "id":  "31009d16-8f49-4cb7-bb6f-9948e0e0a1e7",
+                      "name":  "Build Reply And Memory"
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const staticData = $getWorkflowStaticData(\u0027global\u0027);\nif (!staticData.monthlyCost) {\n  staticData.monthlyCost = {};\n}\n\nconst now = new Date();\nconst monthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, \u00270\u0027)}`;\nconst inputItems = $input.all();\nconst out = [];\n\nfor (const item of inputItems) {\n  const json = item.json;\n  const record = staticData.monthlyCost[monthKey] || { total_usd: 0, alert_sent: false, updated_at: null };\n  const delta = Number(json.estimated_cost_usd || 0);\n\n  record.total_usd = Number((record.total_usd + delta).toFixed(6));\n  record.updated_at = now.toISOString();\n  staticData.monthlyCost[monthKey] = record;\n\n  const threshold = Number(json.cfg_monthly_cost_limit_usd || 25);\n  const alertNeeded = Boolean(json.cfg_cost_alert_enabled) \u0026\u0026 !record.alert_sent \u0026\u0026 record.total_usd \u003e= threshold;\n\n  out.push({\n    json: {\n      ...json,\n      cost_month_key: monthKey,\n      cost_total_usd: record.total_usd,\n      cost_alert_needed: alertNeeded\n    }\n  });\n}\n\nreturn out;"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       98208,
+                                       41552
+                                   ],
+                      "id":  "25d6e6de-397b-4299-a07c-54ec10a65bca",
+                      "name":  "Track Monthly Cost"
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "options":  {
+                                                                            "caseSensitive":  true,
+                                                                            "leftValue":  "",
+                                                                            "typeValidation":  "strict",
+                                                                            "version":  3
+                                                                        },
+                                                            "conditions":  [
+                                                                               {
+                                                                                   "id":  "cost-alert-needed",
+                                                                                   "leftValue":  "={{ $json.cost_alert_needed ? \u0027yes\u0027 : \u0027no\u0027 }}",
+                                                                                   "rightValue":  "yes",
+                                                                                   "operator":  {
+                                                                                                    "type":  "string",
+                                                                                                    "operation":  "equals"
+                                                                                                }
+                                                                               }
+                                                                           ],
+                                                            "combinator":  "and"
+                                                        },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  2.3,
+                      "position":  [
+                                       98448,
+                                       41552
+                                   ],
+                      "id":  "4ca9d679-395b-4167-b9d6-dedf6f2c5356",
+                      "name":  "Cost Alert Needed?"
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://graph.facebook.com/v25.0/YOUR_PHONE_NUMBER_ID/messages",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "httpBearerAuth",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ messaging_product: \u0027whatsapp\u0027, to: $json.cfg_owner_whatsapp_e164, type: \u0027text\u0027, text: { body: \u0027Cost alert: monthly estimated usage is $\u0027 + $json.cost_total_usd + \u0027 for \u0027 + $json.cost_month_key + \u0027. Limit: $\u0027 + $json.cfg_monthly_cost_limit_usd + \u0027.\u0027 } }) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       98688,
+                                       41536
+                                   ],
+                      "id":  "3cf3f8a4-9114-4a33-960f-a79ad714ccdc",
+                      "name":  "Send Cost Alert",
+                      "credentials":  {
+                                          "httpBearerAuth":  {
+                                                                 "id":  "x8M66I3X8TT5eWZg",
+                                                                 "name":  "Bearer Auth account"
+                                                             }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const staticData = $getWorkflowStaticData(\u0027global\u0027);\nif (!staticData.monthlyCost) {\n  staticData.monthlyCost = {};\n}\n\nconst inputItems = $input.all();\nfor (const item of inputItems) {\n  const key = item.json.cost_month_key;\n  if (key \u0026\u0026 staticData.monthlyCost[key]) {\n    staticData.monthlyCost[key].alert_sent = true;\n    staticData.monthlyCost[key].updated_at = new Date().toISOString();\n  }\n}\n\nreturn inputItems;"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       98912,
+                                       41536
+                                   ],
+                      "id":  "68201918-396f-42c5-a95f-07de1cfe825a",
+                      "name":  "Mark Cost Alert Sent"
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://graph.facebook.com/v25.0/YOUR_PHONE_NUMBER_ID/messages",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "httpBearerAuth",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({\nmessaging_product: \u0027whatsapp\u0027,\nto: $(\u0027WhatsApp Events Webhook\u0027).item.json.body.entry[0].changes[0].value.messages[0].from,\ntype: \u0027text\u0027,\ntext: {\nbody: String($json.output || \u0027\u0027).slice(0, 4096)\n}\n}) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       98816,
+                                       41888
+                                   ],
+                      "id":  "e5d60d2c-3e5f-49fb-93ed-d09b82359e74",
+                      "name":  "Send WhatsApp Reply",
+                      "credentials":  {
+                                          "httpBearerAuth":  {
+                                                                 "id":  "x8M66I3X8TT5eWZg",
+                                                                 "name":  "Bearer Auth account"
+                                                             }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+
+                                     },
+                      "type":  "n8n-nodes-base.noOp",
+                      "typeVersion":  1,
+                      "position":  [
+                                       96608,
+                                       41904
+                                   ],
+                      "id":  "cafbc499-b347-4c07-87bb-899f9dd7537e",
+                      "name":  "Ignore Non-Message Event"
+                  },
+                  {
+                      "parameters":  {
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+                      "typeVersion":  1,
+                      "position":  [
+                                       98016,
+                                       42224
+                                   ],
+                      "id":  "754bd1dc-0b55-46a6-9b3d-c0e79152f48e",
+                      "name":  "Google Gemini Chat Model",
+                      "credentials":  {
+                                          "googlePalmApi":  {
+                                                                "id":  "hL0M65HOFODi2w8U",
+                                                                "name":  "Google Gemini(PaLM) Api account"
+                                                            }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "calendar":  {
+                                                          "__rl":  true,
+                                                          "value":  "user@example.com",
+                                                          "mode":  "list",
+                                                          "cachedResultName":  "user@example.com"
+                                                      },
+                                         "start":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Start\u0027, `The start time of the event\\\\meeting.\nMust be RFC3339 date-time with timezone offset, example 2026-05-01T10:00:00+03:00.`, \u0027string\u0027) }}",
+                                         "end":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027End\u0027, `The end time of the event\\\\meeting.\nMust be RFC3339 date-time with timezone offset, example 2026-05-01T10:00:00+03:00.\nEnd: RFC3339 date-time with offset, must be after Start`, \u0027string\u0027) }}",
+                                         "useDefaultReminders":  "={{ (() =\u003e { const v = $fromAI(\u0027Use_Default_Reminders\u0027, `Set true if no custom reminder is requested. Set false when user asks for a reminder x hours before the event.`, \u0027boolean\u0027); return v === undefined || v === null ? true : Boolean(v); })() }}",
+                                         "additionalFields":  {
+                                                                  "rrule":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Create_Recurrence_RRule\u0027, `Optional recurrence rule in RFC5545 format WITHOUT the RRULE: prefix. Example: FREQ=WEEKLY;COUNT=10. Leave empty for non-recurring events.`, \u0027string\u0027) }}",
+                                                                  "summary":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Summary\u0027, `The title of the event\\\\meeting`, \u0027string\u0027) }}"
+                                                              },
+                                         "remindersUi":  {
+                                                             "remindersValues":  [
+                                                                                     {
+                                                                                         "method":  "popup",
+                                                                                         "minutes":  "={{ Math.max(0, Math.round((Number($fromAI(\u0027Reminder_Hours\u0027, `Number of hours before event start for reminder notification. Use the user\u0027s requested value.`, \u0027number\u0027)) || 1) * 60)) }}"
+                                                                                     }
+                                                                                 ]
+                                                         }
+                                     },
+                      "type":  "n8n-nodes-base.googleCalendarTool",
+                      "typeVersion":  1.3,
+                      "position":  [
+                                       98320,
+                                       42208
+                                   ],
+                      "id":  "574a56f0-830a-4099-b5be-ff599b015f97",
+                      "name":  "Create an event in Google Calendar",
+                      "credentials":  {
+                                          "googleCalendarOAuth2Api":  {
+                                                                          "id":  "CVRvUEUfeOAqn07g",
+                                                                          "name":  "Google Calendar account 2"
+                                                                      }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "getAll",
+                                         "calendar":  {
+                                                          "__rl":  true,
+                                                          "value":  "user@example.com",
+                                                          "mode":  "list",
+                                                          "cachedResultName":  "user@example.com"
+                                                      },
+                                         "timeMin":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027After\u0027, `After: RFC3339 datetime with timezone, example 2026-05-02T00:00:00+03:00`, \u0027string\u0027) }}",
+                                         "timeMax":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Before\u0027, `Before: RFC3339 datetime with timezone, must be later than After`, \u0027string\u0027) }}",
+                                         "options":  {
+                                                         "orderBy":  "startTime",
+                                                         "query":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Query\u0027, `Search keywords for event title (can also match description/location). Example: physio`, \u0027string\u0027) }}"
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.googleCalendarTool",
+                      "typeVersion":  1.3,
+                      "position":  [
+                                       98480,
+                                       42208
+                                   ],
+                      "id":  "b098cf58-38a8-470c-8deb-721f3a9c8352",
+                      "name":  "Get many events in Google Calendar",
+                      "credentials":  {
+                                          "googleCalendarOAuth2Api":  {
+                                                                          "id":  "CVRvUEUfeOAqn07g",
+                                                                          "name":  "Google Calendar account 2"
+                                                                      }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "sessionIdType":  "customKey",
+                                         "sessionKey":  "={{ $json.sender_phone + \u0027-drivefix-v3\u0027 }}",
+                                         "contextWindowLength":  20
+                                     },
+                      "type":  "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+                      "typeVersion":  1.2,
+                      "position":  [
+                                       98160,
+                                       42304
+                                   ],
+                      "id":  "5ac0412e-aed0-43fb-bfef-8c7727e51296",
+                      "name":  "Simple Memory"
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "delete",
+                                         "calendar":  {
+                                                          "__rl":  true,
+                                                          "value":  "user@example.com",
+                                                          "mode":  "list",
+                                                          "cachedResultName":  "user@example.com"
+                                                      },
+                                         "eventId":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Event_ID\u0027, `The unique identifier of the event to delete`, \u0027string\u0027) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.googleCalendarTool",
+                      "typeVersion":  1.3,
+                      "position":  [
+                                       98640,
+                                       42208
+                                   ],
+                      "id":  "74b784f0-cf47-4abc-a252-156705a48e24",
+                      "name":  "Delete an event in Google Calendar",
+                      "credentials":  {
+                                          "googleCalendarOAuth2Api":  {
+                                                                          "id":  "CVRvUEUfeOAqn07g",
+                                                                          "name":  "Google Calendar account 2"
+                                                                      }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "update",
+                                         "calendar":  {
+                                                          "__rl":  true,
+                                                          "value":  "user@example.com",
+                                                          "mode":  "list",
+                                                          "cachedResultName":  "user@example.com"
+                                                      },
+                                         "eventId":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Event_ID\u0027, `The unique identifier of the event to update. Usually obtain this by searching events first.`, \u0027string\u0027) }}",
+                                         "useDefaultReminders":  "={{ (() =\u003e { const v = $fromAI(\u0027Use_Default_Reminders\u0027, `Set true if no custom reminder is requested. Set false when user asks for a reminder x hours before the event.`, \u0027boolean\u0027); return v === undefined || v === null ? true : Boolean(v); })() }}",
+                                         "updateFields":  {
+                                                              "end":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Updated_End\u0027, `Updated end datetime in RFC3339 with timezone offset. Must be after Updated_Start if provided. Leave empty if not changing end time.`, \u0027string\u0027) }}",
+                                                              "rrule":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Update_Recurrence_RRule\u0027, `Optional recurrence rule in RFC5545 format WITHOUT the RRULE: prefix. Example: FREQ=MONTHLY;COUNT=6. Leave empty if recurrence should not change.`, \u0027string\u0027) }}",
+                                                              "start":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Updated_Start\u0027, `Updated start datetime in RFC3339 with timezone offset. Leave empty if not changing start time.`, \u0027string\u0027) }}",
+                                                              "summary":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Updated_Summary\u0027, `Updated title of the event. Leave empty if not changing title.`, \u0027string\u0027) }}"
+                                                          },
+                                         "remindersUi":  {
+                                                             "remindersValues":  [
+                                                                                     {
+                                                                                         "method":  "popup",
+                                                                                         "minutes":  "={{ Math.max(0, Math.round((Number($fromAI(\u0027Reminder_Hours\u0027, `Number of hours before event start for reminder notification. Use the user\u0027s requested value.`, \u0027number\u0027)) || 1) * 60)) }}"
+                                                                                     }
+                                                                                 ]
+                                                         }
+                                     },
+                      "type":  "n8n-nodes-base.googleCalendarTool",
+                      "typeVersion":  1.3,
+                      "position":  [
+                                       98800,
+                                       42208
+                                   ],
+                      "id":  "958da26e-33c7-42f3-992b-8fec7fae781d",
+                      "name":  "Update an event in Google Calendar",
+                      "credentials":  {
+                                          "googleCalendarOAuth2Api":  {
+                                                                          "id":  "CVRvUEUfeOAqn07g",
+                                                                          "name":  "Google Calendar account 2"
+                                                                      }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "resource":  "fileFolder",
+                                         "queryString":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027Search_Query\u0027, `Use only the key filename fragment to search for (substring match), not a full sentence.\nExamples: GRNY, invoice, to do list.\nFor requests like \"starts with X\" or \"contains X\", pass only X.`, \u0027string\u0027) }}",
+                                         "filter":  {
+                                                        "driveId":  {
+                                                                        "__rl":  true,
+                                                                        "mode":  "list",
+                                                                        "value":  "My Drive"
+                                                                    }
+                                                    },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.googleDriveTool",
+                      "typeVersion":  3,
+                      "position":  [
+                                       98736,
+                                       42464
+                                   ],
+                      "id":  "d5444554-e2ad-42a0-a418-1e351eeeda34",
+                      "name":  "Search files and folders in Google Drive",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "R7upUywcaxzljUQj",
+                                                                       "name":  "Google Drive account"
+                                                                   }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "createFromText",
+                                         "content":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027File_Content\u0027, `The content of the file to create`, \u0027string\u0027) }}",
+                                         "name":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027File_Name\u0027, `The exact file name to create, including extension when provided by user. Example: my log.txt`, \u0027string\u0027) }}",
+                                         "driveId":  {
+                                                         "__rl":  true,
+                                                         "mode":  "list",
+                                                         "value":  "My Drive"
+                                                     },
+                                         "folderId":  {
+                                                          "__rl":  true,
+                                                          "mode":  "list",
+                                                          "value":  "root",
+                                                          "cachedResultName":  "/ (Root folder)"
+                                                      },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.googleDriveTool",
+                      "typeVersion":  3,
+                      "position":  [
+                                       98304,
+                                       42464
+                                   ],
+                      "id":  "d1a5857f-f5a7-4a81-b594-1134a7220fa4",
+                      "name":  "Create file from text in Google Drive",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "R7upUywcaxzljUQj",
+                                                                       "name":  "Google Drive account"
+                                                                   }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "update",
+                                         "fileId":  {
+                                                        "__rl":  true,
+                                                        "value":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027File_to_Update\u0027, `the unique identifier of the file to update`, \u0027string\u0027) }}",
+                                                        "mode":  "id"
+                                                    },
+                                         "changeFileContent":  "={{ (() =\u003e { const v = $fromAI(\u0027Change_File_Content\u0027, `Set true only when user explicitly asks to replace file contents. For rename-only requests keep false.`, \u0027boolean\u0027); return v === undefined || v === null ? false : Boolean(v); })() }}",
+                                         "newUpdatedFileName":  "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI(\u0027New_Updated_File_Name\u0027, `the updated name for the file`, \u0027string\u0027) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.googleDriveTool",
+                      "typeVersion":  3,
+                      "position":  [
+                                       98528,
+                                       42464
+                                   ],
+                      "id":  "bd38657f-e058-4586-8c4f-dcdb893e6eae",
+                      "name":  "Update file in Google Drive",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "R7upUywcaxzljUQj",
+                                                                       "name":  "Google Drive account"
+                                                                   }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ \u0027https://www.googleapis.com/drive/v3/files/\u0027 + $fromAI(\u0027File\u0027, \u0027Google Drive file id\u0027, \u0027string\u0027) + \u0027?alt=media\u0026supportsAllDrives=true\u0027 }}",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleDriveOAuth2Api",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequestTool",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       98960,
+                                       42464
+                                   ],
+                      "id":  "92f75a44-15a8-40ba-91fd-6ac94064a6e5",
+                      "name":  "HTTP Request",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "R7upUywcaxzljUQj",
+                                                                       "name":  "Google Drive account"
+                                                                   }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "PATCH",
+                                         "url":  "={{ \u0027https://www.googleapis.com/upload/drive/v3/files/\u0027 + $fromAI(\u0027File\u0027, \u0027Google Drive file id\u0027, \u0027string\u0027) + \u0027?uploadType=media\u0026supportsAllDrives=true\u0027 }}",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleDriveOAuth2Api",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "text/plain; charset=utf-8"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "contentType":  "raw",
+                                         "rawContentType":  "text/plain; charset=utf-8",
+                                         "body":  "={{ $fromAI(\u0027New_Content\u0027, \u0027Full final content including existing text plus appended text\u0027, \u0027string\u0027) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequestTool",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       99184,
+                                       42464
+                                   ],
+                      "id":  "6b426cb7-da5c-4cbc-ad72-9e52dba77712",
+                      "name":  "HTTP Update content",
+                      "credentials":  {
+                                          "googleDriveOAuth2Api":  {
+                                                                       "id":  "R7upUywcaxzljUQj",
+                                                                       "name":  "Google Drive account"
+                                                                   }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "https://www.googleapis.com/youtube/v3/channels?part=contentDetails\u0026mine=true",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "youTubeOAuth2Api",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequestTool",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       98144,
+                                       42992
+                                   ],
+                      "id":  "084ffe58-5f9a-4008-8417-cfeb453163aa",
+                      "name":  "Get my YouTube related playlists1",
+                      "credentials":  {
+                                          "youTubeOAuth2Api":  {
+                                                                   "id":  "N8pvfVIGIi18Ratk",
+                                                                   "name":  "ariel.s21.phone_youtube"
+                                                               }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ (() =\u003e { const requested = Number($fromAI(\u0027Max_Results\u0027, `How many items to inspect per page`, \u0027number\u0027)); const fallback = Number($json.cfg_youtube_cap) || 20; const resolved = Number.isFinite(requested) \u0026\u0026 requested \u003e 0 ? requested : fallback; const maxResults = Math.max(1, Math.min(50, resolved)); const playlistId = $fromAI(\u0027History_Playlist_ID\u0027, `Playlist ID from relatedPlaylists.watchHistory, likes, or uploads`, \u0027string\u0027); const pageToken = $fromAI(\u0027Page_Token\u0027, `Optional nextPageToken from previous response for pagination`, \u0027string\u0027); const base = \u0027https://www.googleapis.com/youtube/v3/playlistItems?part=snippet\u0026fields=nextPageToken,items(snippet(title,channelTitle,publishedAt,resourceId/videoId))\u0026maxResults=\u0027 + maxResults + \u0027\u0026playlistId=\u0027 + encodeURIComponent(playlistId); return base + (pageToken ? \u0027\u0026pageToken=\u0027 + encodeURIComponent(pageToken) : \u0027\u0027); })() }}",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "youTubeOAuth2Api",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequestTool",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       98368,
+                                       42992
+                                   ],
+                      "id":  "ee7bfe57-d147-42cc-ad73-d78af9a864c7",
+                      "name":  "List videos from YouTube history playlist1",
+                      "credentials":  {
+                                          "youTubeOAuth2Api":  {
+                                                                   "id":  "N8pvfVIGIi18Ratk",
+                                                                   "name":  "ariel.s21.phone_youtube"
+                                                               }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{ \u0027https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics\u0026id=\u0027 + encodeURIComponent($fromAI(\u0027Video_IDs\u0027, `One or more comma-separated YouTube video IDs`, \u0027string\u0027)) }}",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "youTubeOAuth2Api",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequestTool",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       98816,
+                                       42992
+                                   ],
+                      "id":  "96531be3-1230-4a7e-a50b-5fac1d800acf",
+                      "name":  "Get YouTube video details1",
+                      "credentials":  {
+                                          "youTubeOAuth2Api":  {
+                                                                   "id":  "N8pvfVIGIi18Ratk",
+                                                                   "name":  "ariel.s21.phone_youtube"
+                                                               }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "={{ String($json.cfg_transcript_worker_url || \u0027https://n8n.YOUR_SERVER_IP.sslip.io/webhook/youtube-transcript-playwright\u0027) }}",
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ video_url: \u0027https://www.youtube.com/watch?v=\u0027 + String($fromAI(\u0027Video_ID\u0027, `YouTube video ID for transcript retrieval`, \u0027string\u0027) || \u0027\u0027), language: String($fromAI(\u0027Transcript_Language\u0027, `Optional language code (example: en, he). Leave empty for auto.`, \u0027string\u0027) || \u0027\u0027) }) }}",
+                                         "options":  {
+                                                         "response":  {
+                                                                          "response":  {
+                                                                                           "responseFormat":  "json"
+                                                                                       }
+                                                                      }
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.httpRequestTool",
+                      "typeVersion":  4.4,
+                      "position":  [
+                                       99040,
+                                       42992
+                                   ],
+                      "id":  "9e031504-7f12-4dbf-8c7d-069283a18220",
+                      "name":  "Get YouTube transcript (playwright)1"
+                  },
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "youtube-transcript-playwright",
+                                         "responseMode":  "responseNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       99376,
+                                       43456
+                                   ],
+                      "id":  "a8d1aaf2-f0cf-4e22-9c8a-64e64353fd5f",
+                      "name":  "YouTube Transcript Worker Webhook",
+                      "webhookId":  "youtube-transcript-playwright"
+                  },
+                  {
+                      "parameters":  {
+                                         "command":  "={{ 'PLAYWRIGHT_CDP_URL=' + JSON.stringify(String($json.cfg_playwright_cdp_url || '')) + ' ' + String($json.cfg_playwright_node_command || \u0027node\u0027) + \u0027 \u0027 + String($json.cfg_playwright_script_path || \u0027/home/node/.n8n/scripts/youtube_transcript_playwright.js\u0027) + \u0027 --videoUrl \u0027 + JSON.stringify(String($json.body.video_url || \u0027\u0027)) + \u0027 --language \u0027 + JSON.stringify(String($json.body.language || \u0027\u0027)) }}"
+                                     },
+                      "type":  "n8n-nodes-base.executeCommand",
+                      "typeVersion":  1,
+                      "position":  [
+                                       99600,
+                                       43456
+                                   ],
+                      "id":  "f8f2e8a5-4f84-4bca-b940-8f27f3df0831",
+                      "name":  "Run Playwright Transcript Script",
+                      "continueOnFail":  true
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const item = $input.first();\r\nconst stdout = String(item.json.stdout || \u0027\u0027);\r\nconst stderr = String(item.json.stderr || \u0027\u0027);\r\nconst exitCode = Number(item.json.exitCode ?? 0);\r\nconst commandError = item.json.error || null;\r\n\r\nfunction tryParseJson(value) {\r\n  if (!value || !value.trim()) return null;\r\n  try {\r\n    return JSON.parse(value);\r\n  } catch {\r\n    const line = value.split(\u0027\\\\n\u0027).find((l) =\u003e l.trim().startsWith(\u0027{\u0027) \u0026\u0026 l.trim().endsWith(\u0027}\u0027));\r\n    if (!line) return null;\r\n    try {\r\n      return JSON.parse(line);\r\n    } catch {\r\n      return null;\r\n    }\r\n  }\r\n}\r\n\r\nlet payload = tryParseJson(stdout);\r\nif (!payload) {\r\n  payload = {\r\n    status: \u0027error\u0027,\r\n    transcript_text: \u0027\u0027,\r\n    source: \u0027none\u0027,\r\n    error: {\r\n      message: commandError?.message || \u0027Playwright script did not return valid JSON output\u0027,\r\n      stack: commandError?.stack || \u0027\u0027\r\n    },\r\n    debug: {\r\n      stage: \u0027n8n_parse_stdout\u0027,\r\n      stdout_preview: stdout.slice(0, 4000),\r\n      stderr_preview: stderr.slice(0, 4000),\r\n      exit_code: exitCode\r\n    }\r\n  };\r\n}\r\n\r\nif (typeof payload !== \u0027object\u0027 || payload === null) {\r\n  payload = {\r\n    status: \u0027error\u0027,\r\n    transcript_text: \u0027\u0027,\r\n    source: \u0027none\u0027,\r\n    error: { message: \u0027Playwright script returned non-object payload\u0027, stack: \u0027\u0027 },\r\n    debug: { stage: \u0027n8n_payload_validation\u0027, exit_code: exitCode }\r\n  };\r\n}\r\n\r\npayload.status = String(payload.status || \u0027error\u0027);\r\npayload.transcript_text = String(payload.transcript_text || \u0027\u0027);\r\npayload.source = String(payload.source || \u0027none\u0027);\r\npayload.error = payload.error || {};\r\npayload.error.message = String(payload.error.message || \u0027\u0027);\r\npayload.error.stack = String(payload.error.stack || \u0027\u0027);\r\npayload.debug = payload.debug || {};\r\npayload.debug.exit_code = exitCode;\r\nif (stderr \u0026\u0026 !payload.debug.stderr_preview) payload.debug.stderr_preview = stderr.slice(0, 4000);\r\nif (stdout \u0026\u0026 !payload.debug.stdout_preview) payload.debug.stdout_preview = stdout.slice(0, 4000);\r\n\r\nreturn [{ json: payload }];"
+                                     },
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       99824,
+                                       43456
+                                   ],
+                      "id":  "739bf4ea-51a7-44bf-b3bc-6fcc10ca4432",
+                      "name":  "Build Transcript Worker Response"
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ $json }}",
+                                         "options":  {
+                                                         "responseCode":  200
+                                                     }
+                                     },
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1.5,
+                      "position":  [
+                                       100048,
+                                       43456
+                                   ],
+                      "id":  "bfe0ec58-0b8d-4f73-a2d7-cc350e70f6fc",
+                      "name":  "Return Transcript Worker Response"
+                  }
+              ],
+    "pinData":  {
+                    "WhatsApp Events Webhook":  [
+                                                    {
+                                                        "json":  {
+                                                                     "headers":  {
+                                                                                     "connection":  "upgrade",
+                                                                                     "host":  "n8n.YOUR_SERVER_IP.sslip.io",
+                                                                                     "x-real-ip":  "69.171.230.27",
+                                                                                     "x-forwarded-for":  "69.171.230.27",
+                                                                                     "x-forwarded-proto":  "https",
+                                                                                     "content-length":  "544",
+                                                                                     "accept":  "*/*",
+                                                                                     "accept-encoding":  "deflate, gzip",
+                                                                                     "user-agent":  "facebookexternalua",
+                                                                                     "content-type":  "application/json",
+                                                                                     "x-hub-signature":  "sha1=c84649b311630ce941b9a6f5c2fe67d67fc7a756",
+                                                                                     "x-hub-signature-256":  "sha256=1c81adf6dd0f3c98080c28e196b12e4dab34e8c2034caab8744ab24038fd7270"
+                                                                                 },
+                                                                     "params":  {
+
+                                                                                },
+                                                                     "query":  {
+
+                                                                               },
+                                                                     "body":  {
+                                                                                  "object":  "whatsapp_business_account",
+                                                                                  "entry":  [
+                                                                                                {
+                                                                                                    "id":  "YOUR_BUSINESS_ACCOUNT_ID",
+                                                                                                    "changes":  [
+                                                                                                                    {
+                                                                                                                        "value":  {
+                                                                                                                                      "messaging_product":  "whatsapp",
+                                                                                                                                      "metadata":  {
+                                                                                                                                                       "display_phone_number":  "15551668963",
+                                                                                                                                                       "phone_number_id":  "YOUR_PHONE_NUMBER_ID"
+                                                                                                                                                   },
+                                                                                                                                      "contacts":  [
+                                                                                                                                                       {
+                                                                                                                                                           "profile":  {
+                                                                                                                                                                           "name":  "Ariel"
+                                                                                                                                                                       },
+                                                                                                                                                           "wa_id":  "1234567890",
+                                                                                                                                                           "user_id":  "IL.1482031136635401"
+                                                                                                                                                       }
+                                                                                                                                                   ],
+                                                                                                                                      "messages":  [
+                                                                                                                                                       {
+                                                                                                                                                           "from":  "1234567890",
+                                                                                                                                                           "from_user_id":  "IL.1482031136635401",
+                                                                                                                                                           "id":  "wamid.HBgMOTcyNTQ3NTM1NzU4FQIAEhgWM0VCMDBDQ0VDRDA5OUNBNzZFOUY4MQA=",
+                                                                                                                                                           "timestamp":  "1777418358",
+                                                                                                                                                           "text":  {
+                                                                                                                                                                        "body":  "yoohoo"
+                                                                                                                                                                    },
+                                                                                                                                                           "type":  "text"
+                                                                                                                                                       }
+                                                                                                                                                   ]
+                                                                                                                                  },
+                                                                                                                        "field":  "messages"
+                                                                                                                    }
+                                                                                                                ]
+                                                                                                }
+                                                                                            ]
+                                                                              },
+                                                                     "webhookUrl":  "https://n8n.YOUR_SERVER_IP.sslip.io/webhook/meta-whatsapp-agent",
+                                                                     "executionMode":  "production"
+                                                                 }
+                                                    }
+                                                ]
+                },
+    "connections":  {
+                        "List my YouTube activities":  {
+                                                           "ai_tool":  [
+                                                                           [
+                                                                               {
+                                                                                   "node":  "AI Agent2",
+                                                                                   "type":  "ai_tool",
+                                                                                   "index":  0
+                                                                               }
+                                                                           ]
+                                                                       ]
+                                                       },
+                        "Meta Verify Webhook1":  {
+                                                     "main":  [
+                                                                  [
+                                                                      {
+                                                                          "node":  "Verify Token Valid?1",
+                                                                          "type":  "main",
+                                                                          "index":  0
+                                                                      }
+                                                                  ]
+                                                              ]
+                                                 },
+                        "Verify Token Valid?1":  {
+                                                     "main":  [
+                                                                  [
+                                                                      {
+                                                                          "node":  "Return Challenge1",
+                                                                          "type":  "main",
+                                                                          "index":  0
+                                                                      }
+                                                                  ],
+                                                                  [
+                                                                      {
+                                                                          "node":  "Reject Invalid Verify",
+                                                                          "type":  "main",
+                                                                          "index":  0
+                                                                      }
+                                                                  ]
+                                                              ]
+                                                 },
+                        "AI Agent2":  {
+                                          "main":  [
+                                                       [
+                                                           {
+                                                               "node":  "Send WhatsApp Reply",
+                                                               "type":  "main",
+                                                               "index":  0
+                                                           }
+                                                       ]
+                                                   ]
+                                      },
+                        "WhatsApp Events Webhook":  {
+                                                        "main":  [
+                                                                     [
+                                                                         {
+                                                                             "node":  "Has Incoming Message?",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ]
+                                                                 ]
+                                                    },
+                        "Has Incoming Message?":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Runtime Config",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ],
+                                                                   [
+                                                                       {
+                                                                           "node":  "Ignore Non-Message Event",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  },
+                        "Runtime Config":  {
+                                               "main":  [
+                                                            [
+                                                                {
+                                                                    "node":  "Is Audio Message?",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                }
+                                                            ]
+                                                        ]
+                                           },
+                        "Extract Message Data":  {
+                                                     "main":  [
+                                                                  [
+                                                                      {
+                                                                          "node":  "Build Reply And Memory",
+                                                                          "type":  "main",
+                                                                          "index":  0
+                                                                      },
+                                                                      {
+                                                                          "node":  "AI Agent2",
+                                                                          "type":  "main",
+                                                                          "index":  0
+                                                                      }
+                                                                  ]
+                                                              ]
+                                                 },
+                        "Is Audio Message?":  {
+                                                  "main":  [
+                                                               [
+                                                                   {
+                                                                       "node":  "WA Get Audio Media Info",
+                                                                       "type":  "main",
+                                                                       "index":  0
+                                                                   }
+                                                               ],
+                                                               [
+                                                                   {
+                                                                       "node":  "Extract Message Data",
+                                                                       "type":  "main",
+                                                                       "index":  0
+                                                                   }
+                                                               ]
+                                                           ]
+                                              },
+                        "WA Get Audio Media Info":  {
+                                                        "main":  [
+                                                                     [
+                                                                         {
+                                                                             "node":  "WA Download Audio Binary",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ]
+                                                                 ]
+                                                    },
+                        "WA Download Audio Binary":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "Prepare Gemini Audio Payload",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     },
+                        "Prepare Gemini Audio Payload":  {
+                                                             "main":  [
+                                                                          [
+                                                                              {
+                                                                                  "node":  "Gemini Transcribe Audio",
+                                                                                  "type":  "main",
+                                                                                  "index":  0
+                                                                              }
+                                                                          ]
+                                                                      ]
+                                                         },
+                        "Gemini Transcribe Audio":  {
+                                                        "main":  [
+                                                                     [
+                                                                         {
+                                                                             "node":  "Build Audio Message Data",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ]
+                                                                 ]
+                                                    },
+                        "Build Audio Message Data":  {
+                                                         "main":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "Build Reply And Memory",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          },
+                                                                          {
+                                                                              "node":  "AI Agent2",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                                     },
+                        "Build Reply And Memory":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Track Monthly Cost",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "Track Monthly Cost":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "Cost Alert Needed?",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "Cost Alert Needed?":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "Send Cost Alert",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "Send Cost Alert":  {
+                                                "main":  [
+                                                             [
+                                                                 {
+                                                                     "node":  "Mark Cost Alert Sent",
+                                                                     "type":  "main",
+                                                                     "index":  0
+                                                                 }
+                                                             ]
+                                                         ]
+                                            },
+                        "Google Gemini Chat Model":  {
+                                                         "ai_languageModel":  [
+                                                                                  [
+                                                                                      {
+                                                                                          "node":  "AI Agent2",
+                                                                                          "type":  "ai_languageModel",
+                                                                                          "index":  0
+                                                                                      }
+                                                                                  ]
+                                                                              ]
+                                                     },
+                        "Create an event in Google Calendar":  {
+                                                                   "ai_tool":  [
+                                                                                   [
+                                                                                       {
+                                                                                           "node":  "AI Agent2",
+                                                                                           "type":  "ai_tool",
+                                                                                           "index":  0
+                                                                                       }
+                                                                                   ]
+                                                                               ]
+                                                               },
+                        "Get many events in Google Calendar":  {
+                                                                   "ai_tool":  [
+                                                                                   [
+                                                                                       {
+                                                                                           "node":  "AI Agent2",
+                                                                                           "type":  "ai_tool",
+                                                                                           "index":  0
+                                                                                       }
+                                                                                   ]
+                                                                               ]
+                                                               },
+                        "Simple Memory":  {
+                                              "ai_memory":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "AI Agent2",
+                                                                        "type":  "ai_memory",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                          },
+                        "Delete an event in Google Calendar":  {
+                                                                   "ai_tool":  [
+                                                                                   [
+                                                                                       {
+                                                                                           "node":  "AI Agent2",
+                                                                                           "type":  "ai_tool",
+                                                                                           "index":  0
+                                                                                       }
+                                                                                   ]
+                                                                               ]
+                                                               },
+                        "Update an event in Google Calendar":  {
+                                                                   "ai_tool":  [
+                                                                                   [
+                                                                                       {
+                                                                                           "node":  "AI Agent2",
+                                                                                           "type":  "ai_tool",
+                                                                                           "index":  0
+                                                                                       }
+                                                                                   ]
+                                                                               ]
+                                                               },
+                        "Search files and folders in Google Drive":  {
+                                                                         "ai_tool":  [
+                                                                                         [
+                                                                                             {
+                                                                                                 "node":  "AI Agent2",
+                                                                                                 "type":  "ai_tool",
+                                                                                                 "index":  0
+                                                                                             }
+                                                                                         ]
+                                                                                     ]
+                                                                     },
+                        "Create file from text in Google Drive":  {
+                                                                      "ai_tool":  [
+                                                                                      [
+                                                                                          {
+                                                                                              "node":  "AI Agent2",
+                                                                                              "type":  "ai_tool",
+                                                                                              "index":  0
+                                                                                          }
+                                                                                      ]
+                                                                                  ]
+                                                                  },
+                        "Update file in Google Drive":  {
+                                                            "ai_tool":  [
+                                                                            [
+                                                                                {
+                                                                                    "node":  "AI Agent2",
+                                                                                    "type":  "ai_tool",
+                                                                                    "index":  0
+                                                                                }
+                                                                            ]
+                                                                        ]
+                                                        },
+                        "HTTP Request":  {
+                                             "ai_tool":  [
+                                                             [
+                                                                 {
+                                                                     "node":  "AI Agent2",
+                                                                     "type":  "ai_tool",
+                                                                     "index":  0
+                                                                 }
+                                                             ]
+                                                         ]
+                                         },
+                        "HTTP Update content":  {
+                                                    "ai_tool":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "AI Agent2",
+                                                                            "type":  "ai_tool",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                },
+                        "Get my YouTube related playlists1":  {
+                                                                  "ai_tool":  [
+                                                                                  [
+                                                                                      {
+                                                                                          "node":  "AI Agent2",
+                                                                                          "type":  "ai_tool",
+                                                                                          "index":  0
+                                                                                      }
+                                                                                  ]
+                                                                              ]
+                                                              },
+                        "List videos from YouTube history playlist1":  {
+                                                                           "ai_tool":  [
+                                                                                           [
+                                                                                               {
+                                                                                                   "node":  "AI Agent2",
+                                                                                                   "type":  "ai_tool",
+                                                                                                   "index":  0
+                                                                                               }
+                                                                                           ]
+                                                                                       ]
+                                                                       },
+                        "Get YouTube video details1":  {
+                                                           "ai_tool":  [
+                                                                           [
+                                                                               {
+                                                                                   "node":  "AI Agent2",
+                                                                                   "type":  "ai_tool",
+                                                                                   "index":  0
+                                                                               }
+                                                                           ]
+                                                                       ]
+                                                       },
+                        "Get YouTube transcript (playwright)1":  {
+                                                                     "ai_tool":  [
+                                                                                     [
+                                                                                         {
+                                                                                             "node":  "AI Agent2",
+                                                                                             "type":  "ai_tool",
+                                                                                             "index":  0
+                                                                                         }
+                                                                                     ]
+                                                                                 ]
+                                                                 },
+                        "YouTube Transcript Worker Webhook":  {
+                                                                  "main":  [
+                                                                               [
+                                                                                   {
+                                                                                       "node":  "Run Playwright Transcript Script",
+                                                                                       "type":  "main",
+                                                                                       "index":  0
+                                                                                   }
+                                                                               ]
+                                                                           ]
+                                                              },
+                        "Run Playwright Transcript Script":  {
+                                                                 "main":  [
+                                                                              [
+                                                                                  {
+                                                                                      "node":  "Build Transcript Worker Response",
+                                                                                      "type":  "main",
+                                                                                      "index":  0
+                                                                                  }
+                                                                              ]
+                                                                          ]
+                                                             },
+                        "Build Transcript Worker Response":  {
+                                                                 "main":  [
+                                                                              [
+                                                                                  {
+                                                                                      "node":  "Return Transcript Worker Response",
+                                                                                      "type":  "main",
+                                                                                      "index":  0
+                                                                                  }
+                                                                              ]
+                                                                          ]
+                                                             }
+                    },
+    "active":  true,
+    "settings":  {
+                     "executionOrder":  "v1",
+                     "binaryMode":  "separate",
+                     "availableInMCP":  false
+                 },
+    "versionId":  "b523d4ef-01e5-413a-87a7-4be2870df4eb",
+    "meta":  {
+                 "templateCredsSetupCompleted":  true,
+                 "instanceId":  "dab484bc2ab9c72ded7089d3dcacd24bfeb7f4fe67ddc489f36d381147334a26"
+             },
+    "id":  "OUVoRe6G4bres0Ek",
+    "tags":  [
+
+             ]
+}
